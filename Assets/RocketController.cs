@@ -16,6 +16,10 @@ public class RocketController : MonoBehaviour
     public bool jumpPressed;
 
     public GameObject canvas;
+    [Header("Pause Menu")]
+    [SerializeField] private GameObject pauseMenuPanel;
+    [SerializeField] private GameObject settingsPanel;
+    private bool isPaused = false;
     private bool isDead = false;
     private Rigidbody2D rb;
     private Animator animator;
@@ -37,9 +41,9 @@ public class RocketController : MonoBehaviour
         animator = GetComponent<Animator>();
         particleSystems = GetComponentsInChildren<ParticleSystem>();
         // gather spawners, current obstacles and audio sources in scene
-        spawners = FindObjectsOfType<ObstacleSpawner>();
-        obstacles = FindObjectsOfType<Obstacle>();
-        sceneAudioSources = FindObjectsOfType<AudioSource>();
+        spawners = UnityEngine.Object.FindObjectsByType<ObstacleSpawner>(FindObjectsSortMode.None);
+        obstacles = UnityEngine.Object.FindObjectsByType<Obstacle>(FindObjectsSortMode.None);
+        sceneAudioSources = UnityEngine.Object.FindObjectsByType<AudioSource>(FindObjectsSortMode.None);
     } 
 
     private void OnEnable()
@@ -69,6 +73,11 @@ public class RocketController : MonoBehaviour
     private void Update()
     {
         if (isDead) return;
+        // toggle pause menu with Escape (Input System)
+        if (UnityEngine.InputSystem.Keyboard.current != null && UnityEngine.InputSystem.Keyboard.current.escapeKey.wasPressedThisFrame)
+        {
+            TogglePause();
+        }
         // update elapsed time and HUD
         elapsedTime += Time.deltaTime;
         if (inGameScoreText != null)
@@ -143,7 +152,7 @@ public class RocketController : MonoBehaviour
         }
 
         // stop and disable current obstacles
-        var currentObstacles = FindObjectsOfType<Obstacle>();
+        var currentObstacles = UnityEngine.Object.FindObjectsByType<Obstacle>(FindObjectsSortMode.None);
         if (currentObstacles != null)
         {
             foreach (var o in currentObstacles)
@@ -176,11 +185,67 @@ public class RocketController : MonoBehaviour
         {
             onDeath.Invoke();
         }
+
+        // ensure pause is disabled and timeScale restored on death
+        if (isPaused)
+        {
+            isPaused = false;
+            if (pauseMenuPanel != null) pauseMenuPanel.SetActive(false);
+        }
+        Time.timeScale = 1f;
     }
 
     // Hook this to the Restart button OnClick in the UI
     public void restart()
     {
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+
+    // Pause menu controls
+    public void TogglePause()
+    {
+        if (isDead) return;
+        isPaused = !isPaused;
+        if (isPaused)
+        {
+            Time.timeScale = 0f;
+            if (pauseMenuPanel != null) pauseMenuPanel.SetActive(true);
+            if (upButton != null && upButton.action != null) upButton.action.Disable();
+        }
+        else
+        {
+            Time.timeScale = 1f;
+            if (pauseMenuPanel != null) pauseMenuPanel.SetActive(false);
+            if (upButton != null && upButton.action != null) upButton.action.Enable();
+        }
+    }
+
+    public void ContinueGame()
+    {
+        if (isPaused) TogglePause();
+    }
+
+    public void OpenSettings()
+    {
+        if (settingsPanel != null) settingsPanel.SetActive(true);
+    }
+
+    public void CloseSettings()
+    {
+        if (settingsPanel != null) settingsPanel.SetActive(false);
+    }
+
+    public void QuitGame()
+    {
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
+    }
+
+    private void OnDestroy()
+    {
+        Time.timeScale = 1f;
     }
 }
