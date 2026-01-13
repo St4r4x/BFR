@@ -20,6 +20,8 @@ public class RocketController : MonoBehaviour
     [SerializeField] private GameObject pauseMenuPanel;
     [SerializeField] private GameObject settingsPanel;
     private bool isPaused = false;
+    [Header("Scenes")]
+    public string mainMenuSceneName = "MainMenu";
     private bool isDead = false;
     private Rigidbody2D rb;
     private Animator animator;
@@ -237,11 +239,17 @@ public class RocketController : MonoBehaviour
 
     public void QuitGame()
     {
-#if UNITY_EDITOR
+        if (!string.IsNullOrEmpty(mainMenuSceneName))
+        {
+            Time.timeScale = 1f;
+            SceneManager.LoadScene(mainMenuSceneName);
+            return;
+        }
+    #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
-#else
+    #else
         Application.Quit();
-#endif
+    #endif
     }
 
     private void OnDestroy()
